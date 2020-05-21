@@ -19,15 +19,16 @@ void sortRibs(int &picks, int &ribs, vector<Rib> &structRibs);
 
 int *getAdjacenceMatrix(int &picks, vector<Rib> &structRibs);
 
-bool hasIdealMatching(int *matrix, int &picks);
-
-bool isIdealMatching(int *matrix, int &picks);
-
 int *getSpecialMatrix(int *matrix, int &picks);
 
 void printMatrix(const int *matrix, int picks);
 
-vector<const int *> findIdealMatching(int &picks, int &ribs, vector<Rib> &structRibs);
+bool checkRows(int *matrix, int picks);
+
+bool checkColumns(int *matrix,int picks);
+
+void findIdealMatching(int *matrix, int picks, int row);
+
 
 int *matrixClone(const int *matrix, int &picks);
 
@@ -37,7 +38,8 @@ int main() {
     int n = 0, m = 0;
     initializeGraph(n, m, ribsList);
     sortRibs(n, m, ribsList);
-    findIdealMatching(n, m, ribsList);
+    int *specialMatrix=getSpecialMatrix(getAdjacenceMatrix(n,ribsList),n);
+findIdealMatching(specialMatrix,n,0);
     return 0;
 }
 
@@ -73,63 +75,44 @@ void sortRibs(int &picks, int &ribs, vector<Rib> &structRibs) {
     }
 }
 
-vector<const int *> findIdealMatching(int &picks, int &ribs, vector<Rib> &structRibs) {
-
-    int *adjacenceMatrix = getAdjacenceMatrix(picks, structRibs);
-    int *specialMatrix = getSpecialMatrix(getAdjacenceMatrix(picks, structRibs), picks);
-    int *matchingMatrix = specialMatrix;
-
-    vector<const int *> idealMatchingMatrixes;
-    vector<vector<int>> helpVector;
-    vector<int> tmpVector;
-
-    if (!hasIdealMatching(adjacenceMatrix, picks))return {};
-
-    for (int i = 0; i < picks; i++) {
-        for (int j = 0; j < picks; j++) {
-            if (*(adjacenceMatrix + i * picks + j) == 1)tmpVector.push_back(j);
-        }
-        helpVector.push_back(tmpVector);
-        tmpVector.clear();
-    }
-
-    int combinationNumber = helpVector[0].size();
-
-    for (int i = 1; i < helpVector.size(); i++) {
-        combinationNumber = combinationNumber * helpVector[i].size();
-    }
-
-    vector<int> counter(picks, 0);
-
-    for (int i = 0; i < combinationNumber; i++) {
-
-        for (int j = 0; j < picks; j++) {
-            *(matchingMatrix + j * picks + helpVector[j][counter[j]]) = 1;
-        }
-
-        int p = i;
-        bool b = true;
-        while (b) {
-
-            if (counter[p % picks] < helpVector[p % picks].size() - 1) {
-                counter[p % picks]++;
-                b = false;
-            } else {
-                counter[p % picks] = 0;
-                p++;
+void findIdealMatching(int *matrix, int picks, int row) {
+    if (row < picks) {
+        for (int i = 0; i < picks; i++) {
+            if (*(matrix + row * picks + i) == 0 && checkColumns(matrix,picks)) {
+                int *newMatrix = matrixClone(matrix, picks);
+                *(newMatrix + row * picks + i) = 1;
+                findIdealMatching(newMatrix, picks, row + 1);
             }
         }
-printMatrix(matchingMatrix,picks);
-        if (isIdealMatching(matchingMatrix, picks)) {
-            idealMatchingMatrixes.push_back(matrixClone(matchingMatrix,picks));
-             //printMatrix(idealMatchingMatrixes[idealMatchingMatrixes.size()-1],picks);
+    } else {
+        if (checkRows(matrix,picks)&&checkColumns(matrix,picks)) {
+            printMatrix(matrix, picks);
         }
-        matchingMatrix = getSpecialMatrix(specialMatrix, picks);
     }
-    for(int i=0; i<idealMatchingMatrixes.size(); i++){
-     //printMatrix(idealMatchingMatrixes[i], picks);
-         }
-    return idealMatchingMatrixes;
+}
+
+bool checkRows(int *matrix, int picks) {
+    int counter=0;
+    for (int i = 0; i < picks; i++) {
+        for (int j = 0; j < picks; j++) {
+            if(*(matrix+i*picks+j)==1)counter++;
+        }
+        if(counter>1)return false;
+        counter=0;
+    }
+    return true;
+}
+
+bool checkColumns(int *matrix,int picks){
+    int counter=0;
+    for (int i = 0; i < picks; i++) {
+        for (int j = 0; j < picks; j++) {
+            if(*(matrix+j*picks+i)==1)counter++;
+        }
+        if(counter>1)return false;
+        counter=0;
+    }
+    return true;
 }
 
 int *getAdjacenceMatrix(int &picks, vector<Rib> &structRibs) {
@@ -158,35 +141,6 @@ int *getSpecialMatrix(int *matrix, int &picks) {
     return specialMatrix;
 }
 
-bool hasIdealMatching(int *matrix, int &picks) {
-    int columnCounter = 0;
-    int rowCounter = 0;
-    for (int i = 0; i < picks; i++) {
-        for (int j = 0; j < picks; j++) {
-            if (*(matrix + i * picks + j) == -1)rowCounter++;
-            if (*(matrix + j * picks + i) == -1)columnCounter++;
-        }
-        if (columnCounter == picks || rowCounter == picks)return false;
-        rowCounter = 0;
-        columnCounter = 0;
-    }
-    return true;
-}
-
-bool isIdealMatching(int *matrix, int &picks) {
-    int columnCounter = 0;
-    int rowCounter = 0;
-    for (int i = 0; i < picks; i++) {
-        for (int j = 0; j < picks; j++) {
-            if (*(matrix + i * picks + j) == 1)rowCounter++;
-            if (*(matrix + j * picks + i) == 1)columnCounter++;
-        }
-        if (columnCounter > 1 || rowCounter > 1)return false;
-        rowCounter = 0;
-        columnCounter = 0;
-    }
-    return true;
-}
 
 int *matrixClone(const int *matrix, int &picks) {
     int *clone = new int[picks * picks];
@@ -201,7 +155,7 @@ int *matrixClone(const int *matrix, int &picks) {
 void printMatrix(const int *matrix, int picks) {
     for (int i = 0; i < picks; i++) {
         for (int j = 0; j < picks; j++) {
-            cout <<setw(3) <<*(matrix + i * picks + j)  ;
+            cout << setw(3) << *(matrix + i * picks + j);
         }
         cout << endl;
     }
